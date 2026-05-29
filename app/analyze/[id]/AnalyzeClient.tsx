@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Map, Download, AlertCircle, Radar, Github, Sparkles, FileCode, Activity, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Map, Download, AlertCircle, Radar, Github, Sparkles, FileCode, Activity, ShieldAlert, AlertTriangle, Home, FileText, Network } from 'lucide-react';
 import { HeatMap } from '@/components/HeatMap';
 import { NodeSidebar } from '@/components/NodeSidebar';
 import { FilterBar } from '@/components/FilterBar';
@@ -297,17 +297,40 @@ function AnalyzeContent() {
   return (
     <div className="max-w-[1600px] mx-auto px-6 py-6 flex gap-6 min-h-[calc(100vh-8rem)] fade-in-up">
       {/* Left Floating Vertical Sidebar */}
-      <aside className="hidden md:flex w-20 bg-[#f5efe7]/65 backdrop-blur border border-[rgba(176,122,77,0.14)] rounded-[32px] py-8 flex-col items-center gap-8 shadow-sm shrink-0 sticky top-24 h-[calc(100vh-10rem)]">
-        {/* Centered Icons with Hover Animations */}
-        <div className="bg-[#efe8de] text-[#9a6a43] p-3.5 rounded-[20px] shadow-inner cursor-pointer hover:scale-105 active:scale-95 transition-all">
-          <Radar className="w-5 h-5" />
-        </div>
-        <div className="text-[#8f8175] hover:text-[#2b2622] hover:bg-[#f5eee6]/50 p-3.5 rounded-[20px] cursor-pointer transition-all">
-          <Map className="w-5 h-5" />
-        </div>
-        <div className="text-[#8f8175] hover:text-[#2b2622] hover:bg-[#f5eee6]/50 p-3.5 rounded-[20px] cursor-pointer transition-all">
-          <Sparkles className="w-5 h-5" />
-        </div>
+      <aside className="hidden md:flex w-20 bg-[#f5efe7]/65 backdrop-blur border border-[rgba(176,122,77,0.14)] rounded-[32px] py-8 flex-col items-center gap-6 shadow-sm shrink-0 sticky top-24 h-[calc(100vh-10rem)]">
+        {/* Home - goes to root */}
+        <Link 
+          href="/" 
+          className="w-16 h-16 flex flex-col items-center justify-center bg-[#efe8de] text-[#9a6a43] rounded-[20px] shadow-inner hover:scale-105 active:scale-95 transition-all gap-1.5" 
+          aria-label="Home"
+        >
+          <Home className="w-5 h-5 shrink-0" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Home</span>
+        </Link>
+
+        {/* Heatmap - scrolls to heatmap section */}
+        <button
+          type="button"
+          onClick={() => {
+            const el = document.getElementById('heatmap');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }}
+          className="w-16 h-16 flex flex-col items-center justify-center text-[#8f8175] hover:text-[#2b2622] hover:bg-[#f5eee6]/50 rounded-[20px] cursor-pointer transition-all gap-1.5"
+          aria-label="Heatmap"
+        >
+          <Network className="w-5 h-5 shrink-0" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Heatmap</span>
+        </button>
+
+        {/* Executive Report - scrolls to executive report section */}
+        <Link 
+          href="#executive-report" 
+          className="w-16 h-16 flex flex-col items-center justify-center text-[#8f8175] hover:text-[#2b2622] hover:bg-[#f5eee6]/50 rounded-[20px] cursor-pointer transition-all gap-1.5" 
+          aria-label="Executive report"
+        >
+          <FileText className="w-5 h-5 shrink-0" />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Report</span>
+        </Link>
       </aside>
 
       {/* Main content grid area */}
@@ -438,7 +461,7 @@ function AnalyzeContent() {
         )}
 
         {mode === 'business' && (
-          <div className="grid xl:grid-cols-2 gap-6">
+          <div id="executive-report" className="grid xl:grid-cols-2 gap-6">
             <BoardReportCard analysis={analysis} />
             <div />
           </div>
@@ -486,7 +509,7 @@ function AnalyzeContent() {
         {/* Dynamic visual graph and filters block */}
         <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
           <div className="lg:w-[70%] flex flex-col gap-6 min-h-0">
-            <div className="flex-1 min-h-[480px] relative">
+            <div id="heatmap" className="flex-1 min-h-[480px] relative">
               <HeatMap
                 nodes={filteredNodes}
                 links={filteredLinks}
