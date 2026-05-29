@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     const cookieToken = request.cookies.get('sb-provider-token')?.value;
     const token = cookieToken || session?.provider_token || process.env.GITHUB_TOKEN;
+    const isDummyToken = !token || token.includes('ghp_DebtRadar') || token === 'dummy' || token === 'undefined';
 
     if (!token) {
       return NextResponse.json(
@@ -32,10 +33,64 @@ export async function POST(request: NextRequest) {
       issueType,
       lineStart,
       lineEnd,
+      preflight = false,
       preview = false,
     } = body;
 
-    if (!repoOwner || !repoName || !filePath || !issueType) {
+    if (!repoOwner || !repoName) {
+      return NextResponse.json(
+        { error: 'Missing required parameters: repoOwner and repoName are required.' },
+        { status: 400 }
+      );
+    }
+
+    if (preflight) {
+      if (isDummyToken) {
+        return NextResponse.json(
+          { error: 'Invalid GitHub token configured. Please set a valid token with repo write permissions before creating a PR.' },
+          { status: 401 }
+        );
+      }
+
+      try {
+        const octokit = new Octokit({ auth: token! });
+        const repoRes = await octokit.rest.repos.get({ owner: repoOwner, repo: repoName });
+        const canPush = Boolean(repoRes.data.permissions?.push);
+
+        if (!canPush) {
+          return NextResponse.json(
+            { error: `Your GitHub account does not have write access to ${repoOwner}/${repoName}.` },
+            { status: 403 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          canCreatePR: true,
+          defaultBranch: repoRes.data.default_branch || 'main',
+        });
+      } catch (preflightErr: any) {
+        const status = preflightErr?.status;
+        if (status === 401 || status === 403) {
+          return NextResponse.json(
+            { error: 'GitHub authentication failed or token lacks required repo permissions.' },
+            { status: 403 }
+          );
+        }
+        if (status === 404) {
+          return NextResponse.json(
+            { error: `Repository ${repoOwner}/${repoName} was not found or is not accessible by this token.` },
+            { status: 404 }
+          );
+        }
+        return NextResponse.json(
+          { error: `Preflight check failed: ${preflightErr?.message || String(preflightErr)}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (!filePath || !issueType) {
       return NextResponse.json(
         { error: 'Missing required parameters: repoOwner, repoName, filePath, and issueType are required.' },
         { status: 400 }
@@ -45,9 +100,15 @@ export async function POST(request: NextRequest) {
     // 3. Resolve default branch
     let defaultBranch = 'main';
     try {
-      defaultBranch = await getDefaultBranch(repoOwner, repoName);
+      const octokit = isDummyToken ? new Octokit({}) : new Octokit({ auth: token });
+      const repoRes = await octokit.rest.repos.get({ owner: repoOwner, repo: repoName });
+      defaultBranch = repoRes.data.default_branch || 'main';
     } catch (e) {
-      console.warn(`[API Create-PR] Failed resolving default branch, using fallback 'main':`, e);
+      try {
+        defaultBranch = await getDefaultBranch(repoOwner, repoName);
+      } catch {
+        console.warn(`[API Create-PR] Failed resolving default branch, using fallback 'main':`, e);
+      }
     }
 
     // 4. Fetch the file content from GitHub using Octokit (using authenticated token)
@@ -56,7 +117,6 @@ export async function POST(request: NextRequest) {
     let fetchErrToThrow: any = null;
 
     try {
-      const isDummyToken = !token || token.includes('ghp_DebtRadar') || token === 'dummy' || token === 'undefined';
       const octokit = isDummyToken ? new Octokit({}) : new Octokit({ auth: token });
       
       const contentRes = await octokit.rest.repos.getContent({
@@ -165,18 +225,11 @@ ${explanation}
 ---
 *Created automatically by [DebtRadar](https://github.com/syedw/Lume-main)*`;
 
-    const isDummyToken = !token || token.includes('ghp_DebtRadar') || token === 'dummy' || token === 'undefined';
     if (isDummyToken) {
-      console.log(`[API Create-PR] Dummy token detected. Simulating successful PR creation (Demo Mode).`);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      return NextResponse.json({
-        success: true,
-        isDemoMode: true,
-        prUrl: `https://github.com/${repoOwner}/${repoName}/pull/mock-demo-${timestamp}`,
-        prNumber: Math.floor(Math.random() * 100) + 1,
-        estimatedDebtReduction,
-        message: 'Pull request successfully generated (DEMO MODE)!',
-      });
+      return NextResponse.json(
+        { error: 'Invalid GitHub token configured. Please set a valid token with repo write permissions before creating a PR.' },
+        { status: 401 }
+      );
     }
 
     try {
@@ -235,15 +288,10 @@ ${explanation}
 
       const isUnauthorized = prErr.status === 401 || prErr.status === 403 || prErr.message?.includes('Bad credentials') || prErr.message?.includes('401') || prErr.message?.includes('403');
       if (isUnauthorized) {
-        console.warn(`[API Create-PR] PR workflow failed due to auth. Falling back to Demo Mode simulation.`);
-        return NextResponse.json({
-          success: true,
-          isDemoMode: true,
-          prUrl: `https://github.com/${repoOwner}/${repoName}/pull/demo-fallback-${timestamp}`,
-          prNumber: Math.floor(Math.random() * 100) + 1,
-          estimatedDebtReduction,
-          message: 'Pull request successfully generated (DEMO FALLBACK)! Please configure a valid GITHUB_TOKEN in your env to open real PRs.',
-        });
+        return NextResponse.json(
+          { error: 'GitHub authentication failed or token lacks write access. Use a valid token with repo scope and write permissions.' },
+          { status: 403 }
+        );
       }
 
       return NextResponse.json(

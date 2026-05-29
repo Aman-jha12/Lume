@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Map, Download, AlertCircle, Radar, Github, Sparkles, FileCode, Activity, ShieldAlert, AlertTriangle, Home, FileText, Network } from 'lucide-react';
+import { Map, Download, AlertCircle, Radar, Github, Sparkles, FileCode, Activity, ShieldAlert, AlertTriangle, Home, FileText, Network, Milestone } from 'lucide-react';
 import { HeatMap } from '@/components/HeatMap';
 import { NodeSidebar } from '@/components/NodeSidebar';
 import { FilterBar } from '@/components/FilterBar';
@@ -363,7 +363,7 @@ function AnalyzeContent() {
               href={`/roadmap/${analysisId}`}
               className="group flex items-center gap-2.5 bg-[#efe8de]/80 hover:bg-[#e2d7c7]/95 border border-[rgba(176,122,77,0.18)] hover:border-[rgba(176,122,77,0.32)] px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-[#6b5b4d] hover:text-[#2b2622] shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
             >
-              <Map className="w-4 h-4 text-[#9a6a43] group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
+              <Milestone className="w-4 h-4 text-[#9a6a43] group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
               <span>Roadmap</span>
             </Link>
             <a
@@ -409,7 +409,7 @@ function AnalyzeContent() {
           />
         </div>
 
-        {collapseBanner && (
+        {mode === 'technical' && collapseBanner && (
           <SecurityCollapseBanner collapse={collapseBanner} criticalFindings={analysis.critical_vulnerabilities} />
         )}
 
@@ -469,14 +469,16 @@ function AnalyzeContent() {
 
         <SecurityOverview analysis={analysis} nodes={nodes} />
 
-        <div className="grid xl:grid-cols-2 gap-6">
-          <CollapsePredictionPanel prediction={analysis.collapse_prediction} />
-          <AttackPropagationGraph graph={analysis.attack_graph} />
-        </div>
+        {mode === 'technical' && (
+          <div className="grid xl:grid-cols-2 gap-6">
+            <CollapsePredictionPanel prediction={analysis.collapse_prediction} />
+            <AttackPropagationGraph graph={analysis.attack_graph} />
+          </div>
+        )}
 
         <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6">
           <div className="space-y-6">
-            {selected && (
+            {mode === 'technical' && selected && (
               <div className="bg-[#f5efe7]/50 backdrop-blur-md rounded-3xl p-6 border border-[rgba(176,122,77,0.12)] space-y-4 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -557,9 +559,20 @@ function AnalyzeContent() {
 
 export default function AnalyzeClient() {
   return (
-    <Suspense fallback={<LoadingState title="Loading analysis" />}>
+    <Suspense fallback={<RouteSpinner /> }>
       <AnalyzeContent />
     </Suspense>
+  );
+}
+
+function RouteSpinner() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4 py-16">
+      <div className="flex flex-col items-center gap-3 text-slate-500">
+        <div className="w-10 h-10 rounded-full border-4 border-[#efe8de] border-t-[#8c6239] animate-spin" />
+        <p className="text-sm font-semibold">Loading view...</p>
+      </div>
+    </div>
   );
 }
 

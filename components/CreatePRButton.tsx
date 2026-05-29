@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   GitPullRequest,
   CheckCircle2,
@@ -28,6 +28,8 @@ interface PreviewData {
   estimatedDebtReduction: number;
 }
 
+type PreflightStatus = 'idle' | 'checking' | 'ready' | 'failed';
+
 export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -36,6 +38,8 @@ export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProp
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [prUrl, setPrUrl] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [preflightStatus, setPreflightStatus] = useState<PreflightStatus>('idle');
+  const [preflightMessage, setPreflightMessage] = useState<string | null>(null);
 
   // Map the fingerprint tag to standard issue types
   const mapFingerprintToIssueType = (tag: string | null): string => {
@@ -60,6 +64,36 @@ export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProp
   };
 
   const issueType = mapFingerprintToIssueType(node.fingerprint_tag);
+
+  const runPreflightCheck = useCallback(async () => {
+    setPreflightStatus('checking');
+    setPreflightMessage('Checking GitHub permissions...');
+
+    try {
+      const res = await fetch('/api/create-pr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoOwner,
+          repoName,
+          preflight: true,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Preflight check failed');
+      }
+
+      setPreflightStatus('ready');
+      setPreflightMessage('Ready: GitHub token and repo write access verified.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to verify GitHub permissions.';
+      setPreflightStatus('failed');
+      setPreflightMessage(message);
+      setError(message);
+    }
+  }, [repoName, repoOwner]);
 
   const fetchPreview = async () => {
     setLoadingPreview(true);
@@ -86,6 +120,7 @@ export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProp
 
       setPreviewData(data);
       setIsOpen(true);
+      void runPreflightCheck();
     } catch (err) {
       console.error('[CreatePRButton] Error fetching preview:', err);
       setError(err instanceof Error ? err.message : 'Unable to generate code patch. Please try again.');
@@ -96,7 +131,7 @@ export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProp
   };
 
   const handleConfirmPR = async () => {
-    if (!previewData) return;
+    if (!previewData || preflightStatus !== 'ready') return;
     setCreatingPR(true);
     setError(null);
     try {
@@ -134,6 +169,8 @@ export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProp
     setPreviewData(null);
     setPrUrl(null);
     setIsDemoMode(false);
+    setPreflightStatus('idle');
+    setPreflightMessage(null);
     setError(null);
   };
 
@@ -243,6 +280,11 @@ export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProp
                 </div>
               ) : (
                 <>
+                  <div className={`rounded-2xl border p-3 text-xs font-semibold ${preflightStatus === 'failed' ? 'bg-rose-50 border-rose-200 text-rose-800' : preflightStatus === 'ready' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                    {preflightStatus === 'checking' && 'Checking GitHub token and repo write access...'}
+                    {preflightStatus !== 'checking' && (preflightMessage || 'Waiting for permission check...')}
+                  </div>
+
                   {/* Debt Score Impact Metric */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-[#fcfaf7] border border-[rgba(176,123,79,0.12)] rounded-2xl p-4 flex items-center justify-between">
@@ -319,7 +361,7 @@ export function CreatePRButton({ node, repoOwner, repoName }: CreatePRButtonProp
                 <button
                   type="button"
                   onClick={handleConfirmPR}
-                  disabled={creatingPR}
+                  disabled={creatingPR || preflightStatus !== 'ready'}
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_4px_12px_rgba(16,185,129,0.15)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creatingPR ? (

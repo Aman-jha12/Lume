@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldAlert, Waves, TriangleAlert } from 'lucide-react';
+import { ShieldOff, Waves, TriangleAlert } from 'lucide-react';
 import type { SecurityCollapseResult } from '@/types';
 
 interface SecurityCollapseBannerProps {
@@ -17,7 +17,7 @@ export function SecurityCollapseBanner({ collapse, criticalFindings }: SecurityC
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-[#8f1d1d] text-white flex items-center justify-center shadow-lg animate-pulse">
-            <ShieldAlert className="w-6 h-6" />
+            <ShieldOff className="w-6 h-6" />
           </div>
           <div>
             <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#8f1d1d] flex items-center gap-2">

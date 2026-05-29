@@ -68,7 +68,7 @@ export function SecurityOverview({ analysis, nodes }: SecurityOverviewProps) {
         </div>
       </div>
 
-      <VulnerabilityTable findings={findings} />
+      {mode === 'technical' && <VulnerabilityTable findings={findings} />}
     </div>
   );
 }
