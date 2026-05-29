@@ -16,42 +16,42 @@ export function LoadingState({
 }: LoadingStateProps) {
   const normalizedMsg = (message || '').toLowerCase();
 
-  // Define the stages in our pipeline and check their status based on message and progress values
+  // Define the stages in our pipeline using clear progress thresholds so they display sequentially
   const stages = [
     {
       id: 'queue',
       label: 'Queueing & Setup',
       desc: 'Securing pipeline slot and initializing workspace...',
-      isCompleted: progress > 10 || normalizedMsg.includes('fetch') || normalizedMsg.includes('parse') || normalizedMsg.includes('score') || normalizedMsg.includes('graph') || normalizedMsg.includes('completed'),
-      isActive: progress <= 10 && !normalizedMsg.includes('failed'),
+      isCompleted: progress >= 10,
+      isActive: progress < 10 || normalizedMsg.includes('initializ') || normalizedMsg.includes('queue'),
     },
     {
       id: 'fetch',
       label: 'Repository Retrieval',
       desc: 'Downloading repository source files and folders...',
-      isCompleted: progress > 30 || normalizedMsg.includes('filter') || normalizedMsg.includes('parse') || normalizedMsg.includes('score') || normalizedMsg.includes('graph') || normalizedMsg.includes('completed'),
-      isActive: normalizedMsg.includes('fetch') || normalizedMsg.includes('clone'),
+      isCompleted: progress >= 30,
+      isActive: (progress >= 10 && progress < 30) || normalizedMsg.includes('fetch') || normalizedMsg.includes('clone') || normalizedMsg.includes('download'),
     },
     {
       id: 'ast',
       label: 'AST Parsing & Code Mining',
       desc: 'Parsing code structures and building symbol tables...',
-      isCompleted: progress > 60 || normalizedMsg.includes('score') || normalizedMsg.includes('graph') || normalizedMsg.includes('completed'),
-      isActive: normalizedMsg.includes('parse') || normalizedMsg.includes('filter'),
+      isCompleted: progress >= 60,
+      isActive: (progress >= 30 && progress < 60) || normalizedMsg.includes('parse') || normalizedMsg.includes('ast'),
     },
     {
       id: 'scoring',
       label: 'Debt & Security Intelligence',
       desc: 'Calculating complexity, duplication, and vulnerability vectors...',
-      isCompleted: progress > 80 || normalizedMsg.includes('graph') || normalizedMsg.includes('completed'),
-      isActive: normalizedMsg.includes('score') || normalizedMsg.includes('security'),
+      isCompleted: progress >= 90,
+      isActive: (progress >= 60 && progress < 90) || normalizedMsg.includes('score') || normalizedMsg.includes('security'),
     },
     {
       id: 'graph',
       label: 'Graph Generation',
       desc: 'Assembling visual heatmap coordinates and propagation links...',
-      isCompleted: normalizedMsg.includes('completed') || progress >= 95,
-      isActive: normalizedMsg.includes('graph') || normalizedMsg.includes('saving nodes'),
+      isCompleted: progress >= 95 || normalizedMsg.includes('completed'),
+      isActive: progress >= 90 || normalizedMsg.includes('graph') || normalizedMsg.includes('saving nodes'),
     },
   ];
 

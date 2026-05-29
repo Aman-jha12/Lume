@@ -61,10 +61,14 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
+
+      // keep the spinner visible for at least 2 seconds for perceived progress
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       router.push(`/analyze/${data.analysisId}`);
+      // do not setLoading(false) here because navigation will unmount this component
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
       setLoading(false);
     }
   };
