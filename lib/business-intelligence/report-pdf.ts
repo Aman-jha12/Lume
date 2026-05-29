@@ -26,13 +26,22 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin - 20;
 
-  // Apply a dynamic colored top accent banner
+  // Cover Page Top Header Banner
   page.drawRectangle({
     x: 0,
-    y: pageHeight - 8,
+    y: pageHeight - 140,
     width: pageWidth,
-    height: 8,
+    height: 140,
     color: primaryColor,
+  });
+
+  // White decorative accent strip at the bottom of the header block
+  page.drawRectangle({
+    x: 0,
+    y: pageHeight - 142,
+    width: pageWidth,
+    height: 2,
+    color: secondaryColor,
   });
 
   const newPage = () => {
@@ -96,6 +105,27 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
     return lines;
   };
 
+  // Helper to draw modern, clean badges/pills
+  const drawBadge = (text: string, x: number, yPos: number, width: number, height: number, badgeBg: any, badgeText: any, fontSize = 8) => {
+    page.drawRectangle({
+      x,
+      y: yPos,
+      width,
+      height,
+      color: badgeBg,
+    });
+    const textLength = text.length;
+    const textWidth = textLength * (fontSize * 0.55);
+    const paddingX = Math.max(2, (width - textWidth) / 2);
+    page.drawText(sanitize(text), {
+      x: x + paddingX,
+      y: yPos + (height - fontSize) / 2 - 0.5,
+      size: fontSize,
+      font: bold,
+      color: badgeText,
+    });
+  };
+
   const drawHeading = (text: string) => {
     ensureSpace(35);
     
@@ -111,7 +141,7 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
     page.drawText(sanitize(text), {
       x: margin + 12,
       y: y - 14,
-      size: 12.5,
+      size: 11.5,
       font: bold,
       color: primaryColor,
     });
@@ -127,9 +157,9 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
     y -= 34;
   };
 
-  const drawParagraph = (text: string, size = 9.5) => {
+  const drawParagraph = (text: string, size = 9) => {
     const lines = splitText(text, 82);
-    ensureSpace(lines.length * (size + 4.5) + 8);
+    ensureSpace(lines.length * (size + 5) + 8);
     for (const line of lines) {
       page.drawText(line, {
         x: margin,
@@ -138,56 +168,67 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
         font,
         color: textColor,
       });
-      y -= size + 4.5;
+      y -= size + 5;
     }
     y -= 8;
   };
 
-  const drawBulletItem = (text: string, bulletColor = secondaryColor) => {
-    const lines = splitText(text, 78);
-    ensureSpace(lines.length * 14 + 6);
+  // Beautiful Callout Panel for Executive Summaries
+  const drawCalloutBox = (text: string, size = 9.5) => {
+    const lines = splitText(text, 76);
+    const boxHeight = lines.length * (size + 5) + 20;
+    ensureSpace(boxHeight + 10);
     
-    // Draw modern solid square bullet point
     page.drawRectangle({
-      x: margin + 4,
-      y: y - 10,
+      x: margin,
+      y: y - boxHeight,
+      width: 515,
+      height: boxHeight,
+      color: rgb(0.94, 0.96, 0.99),
+    });
+    
+    page.drawRectangle({
+      x: margin,
+      y: y - boxHeight,
       width: 4,
-      height: 4,
-      color: bulletColor,
+      height: boxHeight,
+      color: secondaryColor,
     });
 
+    let textY = y - 16;
     for (const line of lines) {
       page.drawText(line, {
-        x: margin + 18,
-        y: y - 12,
-        size: 9.5,
-        font: font,
-        color: textColor,
+        x: margin + 16,
+        y: textY - size,
+        size,
+        font: bold,
+        color: primaryColor,
       });
-      y -= 14;
+      textY -= size + 5;
     }
-    y -= 4; // Spacing after bullet
+    
+    y -= boxHeight + 12;
   };
 
-  // --- Page 1 Title Block ---
+  // --- Cover Page Branding ---
   page.drawText('DebtRadar Software Trust Report', {
     x: margin,
-    y: y - 10,
-    size: 22,
+    y: pageHeight - 65,
+    size: 24,
     font: bold,
-    color: primaryColor,
+    color: rgb(1, 1, 1),
   });
 
-  page.drawText('EXECUTIVE SUMMARY & RISK ANALYSIS', {
+  page.drawText('EXECUTIVE SUMMARY & TECHNICAL SOFTWARE CREDIT RATING', {
     x: margin,
-    y: y - 25,
-    size: 8,
+    y: pageHeight - 85,
+    size: 8.5,
     font: bold,
-    color: secondaryColor,
+    color: rgb(0.7, 0.85, 1),
   });
 
-  // Left-bordered Metadata Cover Panel
-  const metaY = y - 35;
+  // Floating Metadata Card
+  const metaY = pageHeight - 120;
   page.drawRectangle({
     x: margin,
     y: metaY - 60,
@@ -206,10 +247,10 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
     color: secondaryColor,
   });
 
-  page.drawText('REPOSITORY:', { x: margin + 15, y: metaY - 20, size: 7.5, font: bold, color: mutedColor });
+  page.drawText('REPOSITORY:', { x: margin + 18, y: metaY - 20, size: 7.5, font: bold, color: mutedColor });
   page.drawText(sanitize(repoName), { x: margin + 95, y: metaY - 20, size: 9, font: bold, color: textColor });
   
-  page.drawText('GENERATED ON:', { x: margin + 15, y: metaY - 38, size: 7.5, font: bold, color: mutedColor });
+  page.drawText('GENERATED ON:', { x: margin + 18, y: metaY - 38, size: 7.5, font: bold, color: mutedColor });
   page.drawText(new Date().toLocaleDateString(), { x: margin + 95, y: metaY - 38, size: 9, font, color: textColor });
 
   y = metaY - 75;
@@ -217,7 +258,7 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
   // --- Snapshot Section ---
   drawHeading('Software Credit & Trust Snapshot');
   
-  ensureSpace(85);
+  ensureSpace(95);
   const snapshotY = y;
   page.drawRectangle({
     x: margin,
@@ -237,50 +278,59 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
     color: primaryColor,
   });
 
-  // Column 1: Software Credit Rating
+  // Column 1: Software Credit Rating Badge
   page.drawText('SOFTWARE CREDIT RATING', { x: margin + 18, y: snapshotY - 22, size: 7.5, font: bold, color: mutedColor });
   const risk = report.financialExposure.riskLevel;
   const riskColor = (risk === 'CRITICAL' || risk === 'HIGH') ? redColor : (risk === 'LOW' ? greenColor : amberColor);
-  page.drawText(sanitize(risk), { x: margin + 18, y: snapshotY - 38, size: 13, font: bold, color: riskColor });
+  const softRiskBg = (risk === 'CRITICAL' || risk === 'HIGH') ? rgb(0.98, 0.9, 0.9) : (risk === 'LOW' ? rgb(0.9, 0.97, 0.92) : rgb(0.99, 0.95, 0.9));
+  
+  drawBadge(risk, margin + 18, snapshotY - 42, 85, 16, softRiskBg, riskColor, 8.5);
 
-  // Column 2: Trust / Deployment Recommendation
+  // Column 2: Trust / Deployment Recommendation Badge
   page.drawText('TRUST / DEPLOYMENT STATUS', { x: margin + 240, y: snapshotY - 22, size: 7.5, font: bold, color: mutedColor });
   const rec = report.deploymentRecommendation;
   const recColor = rec.includes('SAFE') ? greenColor : (rec.includes('CRITICAL') || rec.includes('BLOCK') ? redColor : amberColor);
-  page.drawText(sanitize(rec), { x: margin + 240, y: snapshotY - 38, size: 11, font: bold, color: recColor });
+  const softRecBg = rec.includes('SAFE') ? rgb(0.9, 0.97, 0.92) : (rec.includes('CRITICAL') || rec.includes('BLOCK') ? rgb(0.98, 0.9, 0.9) : rgb(0.99, 0.95, 0.9));
+  
+  drawBadge(rec, margin + 240, snapshotY - 42, 175, 16, softRecBg, recColor, 8);
 
-  // Snapshot Divider
+  // Divider
   page.drawLine({
-    start: { x: margin + 18, y: snapshotY - 48 },
-    end: { x: margin + 497, y: snapshotY - 48 },
+    start: { x: margin + 18, y: snapshotY - 54 },
+    end: { x: margin + 497, y: snapshotY - 54 },
     thickness: 0.5,
     color: borderColor,
   });
 
-  // Health Row
-  page.drawText('HEALTH POSTURE', { x: margin + 18, y: snapshotY - 66, size: 7.5, font: bold, color: mutedColor });
-  page.drawText(sanitize(report.repositoryHealth), { x: margin + 130, y: snapshotY - 66, size: 9, font: bold, color: primaryColor });
+  // Health Posture Row
+  page.drawText('HEALTH POSTURE', { x: margin + 18, y: snapshotY - 70, size: 7.5, font: bold, color: mutedColor });
+  page.drawText(sanitize(report.repositoryHealth), { x: margin + 130, y: snapshotY - 70, size: 9, font: bold, color: primaryColor });
 
-  y -= 92;
+  y -= 95;
 
   // --- Executive Summary ---
   drawHeading('Executive Summary');
-  for (const paragraph of report.executiveSummary) {
-    drawParagraph(paragraph);
+  if (report.executiveSummary.length > 0) {
+    // Lead paragraph formatted as a key takeaway callout box
+    drawCalloutBox(report.executiveSummary[0]);
+    // Remaining paragraphs formatted cleanly
+    for (const paragraph of report.executiveSummary.slice(1)) {
+      drawParagraph(paragraph);
+    }
   }
 
-  // --- Financial Impact ---
-  drawHeading('Financial Impact');
+  // --- Financial Impact & Liability Grid ---
+  drawHeading('Financial Impact & Liability');
   
-  ensureSpace(80);
+  ensureSpace(85);
   const finY = y;
   const colWidth = 163;
   const colGap = 13;
 
   const financialItems = [
-    { label: 'ESTIMATED FIX COST', value: `INR ${report.financialExposure.estimatedFixCost.toLocaleString('en-IN')}`, accent: secondaryColor },
-    { label: 'INCIDENT EXPOSURE', value: `INR ${report.financialExposure.estimatedIncidentExposure.toLocaleString('en-IN')}`, accent: redColor },
-    { label: 'OPERATIONAL EXPOSURE', value: `INR ${report.financialExposure.estimatedOperationalExposure.toLocaleString('en-IN')}`, accent: amberColor },
+    { label: 'ESTIMATED FIX COST', value: `INR ${report.financialExposure.estimatedFixCost.toLocaleString('en-IN')}`, accent: secondaryColor, bg: rgb(0.95, 0.97, 1) },
+    { label: 'INCIDENT EXPOSURE', value: `INR ${report.financialExposure.estimatedIncidentExposure.toLocaleString('en-IN')}`, accent: redColor, bg: rgb(1, 0.95, 0.95) },
+    { label: 'OPERATIONAL RISK', value: `INR ${report.financialExposure.estimatedOperationalExposure.toLocaleString('en-IN')}`, accent: amberColor, bg: rgb(1, 0.97, 0.94) },
   ];
 
   financialItems.forEach((item, index) => {
@@ -288,10 +338,10 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
     
     page.drawRectangle({
       x: xPos,
-      y: finY - 60,
+      y: finY - 65,
       width: colWidth,
-      height: 60,
-      color: bgColor,
+      height: 65,
+      color: item.bg,
       borderColor: borderColor,
       borderWidth: 1,
     });
@@ -304,23 +354,24 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
       color: item.accent,
     });
 
-    page.drawText(item.label, { x: xPos + 10, y: finY - 18, size: 7.5, font: bold, color: mutedColor });
-    page.drawText(sanitize(item.value), { x: xPos + 10, y: finY - 38, size: 10.5, font: bold, color: primaryColor });
+    page.drawText(item.label, { x: xPos + 12, y: finY - 18, size: 7.5, font: bold, color: mutedColor });
+    page.drawText(sanitize(item.value), { x: xPos + 12, y: finY - 40, size: 12.5, font: bold, color: primaryColor });
+    page.drawText('ESTIMATED LIABILITY', { x: xPos + 12, y: finY - 54, size: 6.5, font, color: mutedColor });
   });
 
-  y -= 75;
+  y -= 80;
 
-  // --- Compliance Readiness ---
-  drawHeading('Compliance Readiness');
+  // --- Compliance & Regulatory Standards ---
+  drawHeading('Compliance & Regulatory Standards');
   
-  ensureSpace(85);
+  ensureSpace(90);
   const compY = y;
   
   page.drawRectangle({
     x: margin,
-    y: compY - 75,
+    y: compY - 80,
     width: 515,
-    height: 75,
+    height: 80,
     color: bgColor,
     borderColor: borderColor,
     borderWidth: 1,
@@ -329,57 +380,146 @@ export async function generateBoardReportPdf(report: ExecutiveReport, repoName: 
   // Score Badge sidebar
   page.drawRectangle({
     x: margin,
-    y: compY - 75,
-    width: 120,
-    height: 75,
+    y: compY - 80,
+    width: 130,
+    height: 80,
     color: rgb(0.92, 0.94, 0.97),
   });
 
   page.drawLine({
-    start: { x: margin + 120, y: compY - 75 },
-    end: { x: margin + 120, y: compY },
+    start: { x: margin + 130, y: compY - 80 },
+    end: { x: margin + 130, y: compY },
     thickness: 1,
     color: borderColor,
   });
 
-  page.drawText('COMPLIANCE SCORE', { x: margin + 12, y: compY - 18, size: 7.5, font: bold, color: mutedColor });
-  page.drawText(`${report.complianceSummary.score}/100`, { x: margin + 12, y: compY - 38, size: 14, font: bold, color: primaryColor });
+  page.drawText('COMPLIANCE SCORE', { x: margin + 15, y: compY - 20, size: 7.5, font: bold, color: mutedColor });
+  page.drawText(`${report.complianceSummary.score}/100`, { x: margin + 15, y: compY - 38, size: 14, font: bold, color: primaryColor });
   
-  page.drawText('GRADE', { x: margin + 12, y: compY - 52, size: 7.5, font: bold, color: mutedColor });
+  page.drawText('GRADE STATUS', { x: margin + 15, y: compY - 52, size: 7.5, font: bold, color: mutedColor });
   const grade = report.complianceSummary.grade;
   const gradeColor = (grade.startsWith('A') || grade.startsWith('B')) ? greenColor : (grade.startsWith('C') ? amberColor : redColor);
-  page.drawText(sanitize(grade), { x: margin + 12, y: compY - 67, size: 11, font: bold, color: gradeColor });
+  const softGradeBg = (grade.startsWith('A') || grade.startsWith('B')) ? rgb(0.9, 0.97, 0.92) : (grade.startsWith('C') ? rgb(0.99, 0.95, 0.9) : rgb(0.98, 0.9, 0.9));
+  
+  drawBadge(grade, margin + 15, compY - 70, 50, 14, softGradeBg, gradeColor, 9);
 
   // Status Summary Detail
-  page.drawText('READINESS POSTURE', { x: margin + 135, y: compY - 18, size: 7.5, font: bold, color: mutedColor });
+  page.drawText('READINESS POSTURE SUMMARY', { x: margin + 145, y: compY - 20, size: 7.5, font: bold, color: mutedColor });
   
-  const compLines = splitText(report.complianceSummary.status, 55);
-  let compTextY = compY - 32;
+  const compLines = splitText(report.complianceSummary.status, 52);
+  let compTextY = compY - 34;
   for (const line of compLines) {
-    page.drawText(line, { x: margin + 135, y: compTextY, size: 9, font: font, color: textColor });
+    page.drawText(line, { x: margin + 145, y: compTextY, size: 9, font: font, color: textColor });
     compTextY -= 13;
   }
 
-  y -= 90;
+  y -= 95;
 
-  // --- Top Business Risks ---
-  drawHeading('Top Business Risks');
-  for (const risk of report.topBusinessRisks.slice(0, 5)) {
-    drawBulletItem(risk, redColor);
-  }
-
-  // --- Recommended Actions ---
-  drawHeading('Recommended Actions');
-  for (const action of report.recommendedActions.slice(0, 3)) {
-    drawBulletItem(action, greenColor);
-  }
+  // --- Risks & Mitigation Double Column Layout ---
+  ensureSpace(120);
+  drawHeading('Business Risks & Action Plan');
+  
+  const dWidth = 245;
+  const dGap = 25;
+  const leftColX = margin;
+  const rightColX = margin + dWidth + dGap;
+  const dividerX = margin + dWidth + (dGap / 2);
+  
+  const risksData = report.topBusinessRisks.slice(0, 5).map(r => splitText(r, 36));
+  const actionsData = report.recommendedActions.slice(0, 3).map(a => splitText(a, 36));
+  
+  const risksHeight = risksData.reduce((acc, lines) => acc + lines.length * 13 + 8, 0);
+  const actionsHeight = actionsData.reduce((acc, lines) => acc + lines.length * 13 + 8, 0);
+  const maxHeight = Math.max(risksHeight, actionsHeight) + 25;
+  
+  ensureSpace(maxHeight + 10);
+  
+  const startY = y;
+  
+  // Column Titles
+  page.drawText('TOP IDENTIFIED BUSINESS RISKS', {
+    x: leftColX,
+    y: startY - 10,
+    size: 7.5,
+    font: bold,
+    color: redColor,
+  });
+  
+  page.drawText('RECOMMENDED MITIGATION ACTIONS', {
+    x: rightColX,
+    y: startY - 10,
+    size: 7.5,
+    font: bold,
+    color: greenColor,
+  });
+  
+  page.drawLine({ start: { x: leftColX, y: startY - 15 }, end: { x: leftColX + dWidth, y: startY - 15 }, thickness: 1, color: rgb(0.95, 0.9, 0.9) });
+  page.drawLine({ start: { x: rightColX, y: startY - 15 }, end: { x: rightColX + dWidth, y: startY - 15 }, thickness: 1, color: rgb(0.9, 0.95, 0.9) });
+  
+  // Left Column: Business Risks
+  let riskY = startY - 28;
+  risksData.forEach((lines) => {
+    page.drawRectangle({
+      x: leftColX + 2,
+      y: riskY - 8,
+      width: 4,
+      height: 4,
+      color: redColor,
+    });
+    
+    lines.forEach((line) => {
+      page.drawText(line, {
+        x: leftColX + 14,
+        y: riskY - 9,
+        size: 8.5,
+        font: font,
+        color: textColor,
+      });
+      riskY -= 13;
+    });
+    riskY -= 6;
+  });
+  
+  // Right Column: Mitigation Actions
+  let actionY = startY - 28;
+  actionsData.forEach((lines) => {
+    page.drawRectangle({
+      x: rightColX + 2,
+      y: actionY - 8,
+      width: 4,
+      height: 4,
+      color: greenColor,
+    });
+    
+    lines.forEach((line) => {
+      page.drawText(line, {
+        x: rightColX + 14,
+        y: actionY - 9,
+        size: 8.5,
+        font: font,
+        color: textColor,
+      });
+      actionY -= 13;
+    });
+    actionY -= 6;
+  });
+  
+  // Center Vertical Divider
+  const endY = startY - maxHeight;
+  page.drawLine({
+    start: { x: dividerX, y: startY - 5 },
+    end: { x: dividerX, y: endY + 10 },
+    thickness: 0.75,
+    color: borderColor,
+  });
+  
+  y = endY - 10;
 
   // --- Finalize Headers & Footers (Dynamic Page Numbering) ---
   const pages = pdfDoc.getPages();
   for (let i = 0; i < pages.length; i++) {
     const p = pages[i];
     
-    // Draw sleek footer divider
     p.drawLine({
       start: { x: margin, y: margin + 15 },
       end: { x: pageWidth - margin, y: margin + 15 },
