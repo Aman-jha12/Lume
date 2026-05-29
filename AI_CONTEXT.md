@@ -124,3 +124,28 @@ Features:
 * Business View is already gated in `AnalyzeClient` and `RoadmapPage`; Technical View remains unchanged when `mode === 'technical'`.
 * The analysis API already returns trust score, deployment confidence, executive summary, and risk buckets, so Phase 1 can stay read-only and reuse existing data.
 * New executive cards are implemented as modular business-only components under `components/business/` and derived helpers under `lib/business-intelligence/`.
+
+## Phase 4
+
+Status: Completed
+
+Features:
+
+* Executive Report Generator
+* Board Report PDF Export
+
+## Created Files (Phase 4)
+
+* `lib/business-intelligence/executive-report.ts`
+* `lib/business-intelligence/report-pdf.ts`
+* `app/api/export-board-report/[id]/route.ts`
+* `components/business/BoardReportCard.tsx`
+* `components/business/ExecutiveReportPreview.tsx`
+
+## Implementation Notes (Phase 4)
+
+* Added a deterministic `buildExecutiveReport` aggregator that composes existing business intelligence outputs into an executive-friendly report object.
+* Added a server-side PDF generator using `pdf-lib` to produce a board-ready PDF matching the requested section structure.
+* The API route `app/api/export-board-report/[id]/route.ts` supports `GET` and returns JSON when called with `?format=json` (used for preview) or returns a `application/pdf` download when called normally.
+* UI: `BoardReportCard` provides Generate and Download buttons and integrates only in Business View pages (`AnalyzeClient` and `Roadmap`), preserving Technical View.
+* No new analysis, scanning, or database schema changes were made. All outputs reuse existing analysis payload and helper modules.

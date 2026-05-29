@@ -26,6 +26,7 @@ import { FinancialImpactCard } from '@/components/business/FinancialImpactCard';
 import { ComplianceScoreCard } from '@/components/business/ComplianceScoreCard';
 import { ComplianceRiskCenter } from '@/components/business/ComplianceRiskCenter';
 import { RiskTimeline } from '@/components/business/RiskTimeline';
+import BoardReportCard from '@/components/business/BoardReportCard';
 import { useViewMode } from '@/contexts/ViewModeContext';
 import { buildBusinessImpactFromNode } from '@/lib/business-intelligence/business-impact';
 import type {
@@ -433,6 +434,13 @@ function AnalyzeContent() {
           <div className="grid xl:grid-cols-2 gap-6">
             <ComplianceScoreCard analysis={analysis} nodes={nodes} />
             <ComplianceRiskCenter analysis={analysis} nodes={nodes} />
+          </div>
+        )}
+
+        {mode === 'business' && (
+          <div className="grid xl:grid-cols-2 gap-6">
+            <BoardReportCard analysis={analysis} />
+            <div />
           </div>
         )}
 

@@ -1,0 +1,79 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAnalysis, getDebtNodes } from '@/lib/supabase/server';
+import { calculateTrustScore } from '@/lib/business-intelligence/trust-score';
+import { calculateDeploymentConfidence } from '@/lib/business-intelligence/deployment-confidence';
+import { buildExecutiveSummary } from '@/lib/business-intelligence/executive-summary';
+import { buildExecutiveReport } from '@/lib/business-intelligence/executive-report';
+import { generateBoardReportPdf } from '@/lib/business-intelligence/report-pdf';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const analysis = await getAnalysis(params.id);
+    if (!analysis) return NextResponse.json({ error: 'Analysis not found' }, { status: 404 });
+
+    const nodes = await getDebtNodes(params.id);
+
+    // compute trust & deployment like analysis route
+    const repoSecurityScore = analysis.repo_security_score ?? 0;
+    const collapseScore = analysis.collapse_score ?? 0;
+    const repoExploitabilityScore = analysis.repo_exploitability_score ?? 0;
+
+    const trustScore = calculateTrustScore({
+      repoSecurityScore,
+      collapseScore,
+      exploitabilityScore: repoExploitabilityScore,
+      propagationRisk: analysis.collapse_prediction?.collapseProbability ?? collapseScore,
+      blastRadius: nodes.length > 0 ? Math.round(nodes.reduce((total, node) => total + node.blast_radius, 0) / nodes.length) : 0,
+      criticalAuthIssues: nodes.filter(n => (n.security_findings ?? []).some(f => /auth|jwt|session|login|authorization/i.test(f.title))).length,
+      architectureRisk: collapseScore,
+    });
+
+    const deploymentConfidence = calculateDeploymentConfidence({
+      repoSecurityScore,
+      trustScore: trustScore.trustScore,
+      collapseScore,
+      exploitabilityScore: repoExploitabilityScore,
+      propagationRisk: analysis.collapse_prediction?.collapseProbability ?? collapseScore,
+      criticalAuthIssues: nodes.filter(n => (n.security_findings ?? []).some(f => /auth|jwt|session|login|authorization/i.test(f.title))).length,
+    });
+
+    const executiveSummary = buildExecutiveSummary({
+      repoName: `${analysis.repo_owner}/${analysis.repo_name}`,
+      trustScore,
+      deploymentConfidence,
+      translations: nodes.slice(0,8).map((n) => ({ executiveSummary: n.explanation ?? '', businessImpact: n.businessImpact ?? '', customerImpact: n.customerImpact ?? '', operationalRisk: n.deploymentUrgency ?? '', financialRisk: n.financialRisk ?? '', urgency: n.deploymentUrgency ?? '', recommendedAction: n.explanation ?? '', impactTypes: [] })) ,
+      consequences: [],
+    });
+
+    // enrich analysis minimally
+    const enriched = {
+      ...analysis,
+      executiveSummary,
+      trustScore: trustScore.trustScore,
+      deploymentConfidence: deploymentConfidence.deploymentConfidence,
+      deploymentRecommendation: deploymentConfidence.deploymentRecommendation,
+    };
+
+    const report = buildExecutiveReport({ analysis: enriched as any, nodes, trustScore: trustScore.trustScore, deploymentConfidence: deploymentConfidence.deploymentConfidence });
+
+    const url = new URL(request.url);
+    if (url.searchParams.get('format') === 'json') {
+      return NextResponse.json(report);
+    }
+
+    const pdfBytes = await generateBoardReportPdf(report, `${analysis.repo_owner}/${analysis.repo_name}`);
+
+    return new NextResponse(Buffer.from(pdfBytes), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${analysis.repo_name}-DebtRadar-Board-Report.pdf"`,
+      },
+    });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal error' }, { status: 500 });
+  }
+}
