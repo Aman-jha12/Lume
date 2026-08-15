@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Radar, Github } from 'lucide-react';
+import { Compass, Github } from 'lucide-react';
 import './globals.css';
 import { ViewModeProvider } from '@/contexts/ViewModeContext';
 import { RiskTranslationToggle } from '@/components/RiskTranslationToggle';
@@ -32,11 +32,20 @@ export default async function RootLayout({
         <ViewModeProvider>
           <header className="border-b border-[rgba(176,123,79,0.08)] bg-gradient-to-b from-[#fffaf5]/80 to-[#f5efe7]/70 backdrop-blur-md sticky top-0 z-50">
             <div className="w-full px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
-              <Link href="/" className="flex items-center gap-2 group transition-transform active:scale-95">
-                <Radar className="w-7 h-7 text-accent-cyan group-hover:scale-110 transition-transform" />
-                <span className="font-bold text-lg tracking-tight text-slate-900">
-                  Debt<span className="text-accent-cyan font-extrabold">Radar</span>
-                </span>
+              <Link href="/" className="flex items-center gap-3 group transition-transform active:scale-95">
+                <div className="relative flex items-center justify-center w-8 h-8 rounded-lg border border-[rgba(176,122,77,0.24)] bg-[#fffdf9] text-[#9a6a43] rotate-45 group-hover:rotate-90 transition-all duration-500 shadow-sm shrink-0">
+                  <div className="-rotate-45 group-hover:-rotate-90 transition-all duration-500 flex items-center justify-center">
+                    <Compass className="w-4.5 h-4.5 text-[#9a6a43]" />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
+                    Debt<span className="text-[#9a6a43] font-black">Radar</span>
+                  </span>
+                  <span className="text-[7.5px] font-black uppercase tracking-[0.25em] text-slate-400 mt-1.5 leading-none">
+                    AI Trust Intelligence
+                  </span>
+                </div>
               </Link>
               <div className="flex items-center gap-3 sm:gap-4">
                 <RiskTranslationToggle />

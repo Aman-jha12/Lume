@@ -38,13 +38,19 @@ import type {
   TrustScoreResult,
   DeploymentConfidenceResult,
   ConsequencePredictionResult,
+  ViewMode,
 } from '@/types';
 
-function AnalyzeContent() {
+interface AnalyzeClientProps {
+  view?: ViewMode;
+}
+
+function AnalyzeContent({ view }: AnalyzeClientProps) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { mode } = useViewMode();
+  const effectiveMode = view ?? mode;
   const analysisId = params.id as string;
 
   const [analysis, setAnalysis] = useState<AnalysisRecord | null>(null);
@@ -409,11 +415,11 @@ function AnalyzeContent() {
           />
         </div>
 
-        {mode === 'technical' && collapseBanner && (
+        {effectiveMode === 'technical' && collapseBanner && (
           <SecurityCollapseBanner collapse={collapseBanner} criticalFindings={analysis.critical_vulnerabilities} />
         )}
 
-        {mode === 'business' && (
+        {effectiveMode === 'business' && (
           <ExecutiveCommandCenter
             analysis={analysis}
             trust={trustScore}
@@ -423,21 +429,21 @@ function AnalyzeContent() {
           />
         )}
 
-        {mode === 'business' && (
+        {effectiveMode === 'business' && (
           <div className="grid xl:grid-cols-[1.1fr_0.9fr] gap-6">
             <ExecutiveRiskCard analysis={analysis} />
             <TrustScoreCard trust={trustScore} />
           </div>
         )}
 
-        {mode === 'business' && (
+        {effectiveMode === 'business' && (
           <div className="grid xl:grid-cols-2 gap-6">
             <DeploymentConfidenceCard confidence={deploymentConfidence} />
             <ConsequenceForecast forecast={consequenceForecast} />
           </div>
         )}
 
-        {mode === 'business' && (
+        {effectiveMode === 'business' && (
           <BusinessImpactPanel
             risks={businessTranslations}
             operationalRisks={operationalRisks}
@@ -446,21 +452,21 @@ function AnalyzeContent() {
           />
         )}
 
-        {mode === 'business' && (
+        {effectiveMode === 'business' && (
           <div className="grid xl:grid-cols-2 gap-6">
             <FinancialImpactCard analysis={analysis} nodes={nodes} />
             <RiskTimeline analysis={analysis} />
           </div>
         )}
 
-        {mode === 'business' && (
+        {effectiveMode === 'business' && (
           <div className="grid xl:grid-cols-2 gap-6">
             <ComplianceScoreCard analysis={analysis} nodes={nodes} />
             <ComplianceRiskCenter analysis={analysis} nodes={nodes} />
           </div>
         )}
 
-        {mode === 'business' && (
+        {effectiveMode === 'business' && (
           <div id="executive-report" className="grid xl:grid-cols-2 gap-6">
             <BoardReportCard analysis={analysis} />
             <div />
@@ -469,7 +475,7 @@ function AnalyzeContent() {
 
         <SecurityOverview analysis={analysis} nodes={nodes} />
 
-        {mode === 'technical' && (
+        {effectiveMode === 'technical' && (
           <div className="grid xl:grid-cols-2 gap-6">
             <CollapsePredictionPanel prediction={analysis.collapse_prediction} />
             <AttackPropagationGraph graph={analysis.attack_graph} />
@@ -478,7 +484,7 @@ function AnalyzeContent() {
 
         <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6">
           <div className="space-y-6">
-            {mode === 'technical' && selected && (
+            {effectiveMode === 'technical' && selected && (
               <div className="bg-[#f5efe7]/50 backdrop-blur-md rounded-3xl p-6 border border-[rgba(176,122,77,0.12)] space-y-4 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -557,10 +563,10 @@ function AnalyzeContent() {
   );
 }
 
-export default function AnalyzeClient() {
+export default function AnalyzeClient({ view }: AnalyzeClientProps) {
   return (
     <Suspense fallback={<RouteSpinner /> }>
-      <AnalyzeContent />
+      <AnalyzeContent view={view} />
     </Suspense>
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, updateAnalysisProgress } from '@/lib/supabase/server';
+import { createServiceClient, insertAnalysisRecord, updateAnalysisProgress } from '@/lib/supabase/server';
 import { parseGitHubUrl } from '@/lib/utils';
 import { fetchRepositoryFiles } from '@/lib/github';
 import { parseRepository, getCodeSnippet } from '@/lib/ast-parser';
@@ -39,46 +39,38 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[Pipeline] Checking for active duplicate jobs for: ${parsed.owner}/${parsed.repo}`);
-    const supabase = createServiceClient();
+    try {
+      const supabase = createServiceClient();
 
-    // 2. Active-job deduplication & database queue locking (Requirement 7)
-    const { data: existingActive, error: activeCheckError } = await supabase
-      .from('analyses')
-      .select('id, status, progress')
-      .eq('repo_url', repoUrl)
-      .in('status', ['pending', 'fetching', 'parsing', 'scoring', 'graphing'])
-      .maybeSingle();
+      // 2. Active-job deduplication & database queue locking (Requirement 7)
+      const { data: existingActive } = await supabase
+        .from('analyses')
+        .select('id, status, progress')
+        .eq('repo_url', repoUrl)
+        .in('status', ['pending', 'fetching', 'parsing', 'scoring', 'graphing'])
+        .maybeSingle();
 
-    if (existingActive) {
-      console.log(`[Pipeline] Found active duplicate job running for: ${repoUrl} (ID: ${existingActive.id})`);
-      return NextResponse.json({
-        analysisId: existingActive.id,
-        status: existingActive.status,
-        message: 'An active analysis is already running for this repository.'
-      });
+      if (existingActive) {
+        console.log(`[Pipeline] Found active duplicate job running for: ${repoUrl} (ID: ${existingActive.id})`);
+        return NextResponse.json({
+          analysisId: existingActive.id,
+          status: existingActive.status,
+          message: 'An active analysis is already running for this repository.'
+        });
+      }
+    } catch (error) {
+      console.warn('[Pipeline] Duplicate-job check unavailable; continuing with local queueing fallback.', error);
     }
     
     // 3. Enqueue analysis job in Supabase database
-    const { data: analysis, error: insertError } = await supabase
-      .from('analyses')
-      .insert({
-        repo_url: repoUrl,
-        repo_owner: parsed.owner,
-        repo_name: parsed.repo,
-        status: 'pending',
-        progress: 0,
-        progress_message: 'Enqueued in pipeline. Starting job...',
-      })
-      .select()
-      .single();
-
-    if (insertError || !analysis) {
-      console.error('[Pipeline] Failed to insert initial queue record:', insertError);
-      return NextResponse.json(
-        { error: insertError?.message ?? 'Failed to queue analysis' },
-        { status: 500 }
-      );
-    }
+    const analysis = await insertAnalysisRecord({
+      repo_url: repoUrl,
+      repo_owner: parsed.owner,
+      repo_name: parsed.repo,
+      status: 'pending',
+      progress: 0,
+      progress_message: 'Enqueued in pipeline. Starting job...',
+    });
 
     const analysisId = analysis.id as string;
     console.log(`[Pipeline] Job enqueued successfully. Job ID: ${analysisId}`);

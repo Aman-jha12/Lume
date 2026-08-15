@@ -72,7 +72,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       repoName: `${analysis.repo_owner}/${analysis.repo_name}`,
       trustScore,
       deploymentConfidence,
-      translations: nodes.slice(0,8).map((n) => ({ executiveSummary: n.explanation ?? '', businessImpact: n.businessImpact ?? '', customerImpact: n.customerImpact ?? '', operationalRisk: n.deploymentUrgency ?? '', financialRisk: n.financialRisk ?? '', urgency: n.deploymentUrgency ?? '', recommendedAction: n.explanation ?? '', impactTypes: [] })) ,
+      translations: nodes.slice(0, 8).map((node) => ({
+        executiveSummary: node.explanation ?? '',
+        businessImpact: node.businessImpact ?? '',
+        customerImpact: node.customerImpact ?? '',
+        operationalRisk: node.deploymentUrgency ?? '',
+        financialRisk: '',
+        urgency: node.deploymentUrgency ?? '',
+        recommendedAction: node.explanation ?? '',
+        impactTypes: [],
+      })),
       consequences: [],
     });
 

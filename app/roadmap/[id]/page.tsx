@@ -1,40 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Radar } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { RoadmapTable } from '@/components/RoadmapTable';
-import { FingerprintCard } from '@/components/FingerprintCard';
 import { LoadingState } from '@/components/LoadingState';
 import { nodesToRoadmap } from '@/lib/csv';
-import type { AnalysisRecord, DebtNode, RoadmapItem } from '@/types';
-import { ExecutiveRiskCard } from '@/components/ExecutiveRiskCard';
-import { TrustScoreCard } from '@/components/TrustScoreCard';
-import { DeploymentConfidenceCard } from '@/components/DeploymentConfidenceCard';
-import { BusinessImpactPanel } from '@/components/BusinessImpactPanel';
-import { ConsequenceForecast } from '@/components/ConsequenceForecast';
-import { ExecutiveCommandCenter } from '@/components/business/ExecutiveCommandCenter';
-import { FinancialImpactCard } from '@/components/business/FinancialImpactCard';
-import { ComplianceScoreCard } from '@/components/business/ComplianceScoreCard';
-import { ComplianceRiskCenter } from '@/components/business/ComplianceRiskCenter';
-import { RiskTimeline } from '@/components/business/RiskTimeline';
-import BoardReportCard from '@/components/business/BoardReportCard';
-import type { TrustScoreResult, DeploymentConfidenceResult, ConsequencePredictionResult } from '@/types';
-import { useViewMode } from '@/contexts/ViewModeContext';
-import { buildBusinessImpactFromNode } from '@/lib/business-intelligence/business-impact';
+import type { DebtNode, RoadmapItem } from '@/types';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function RoadmapPage() {
   const params = useParams();
   const analysisId = params.id as string;
-  const { mode } = useViewMode();
-  const [analysis, setAnalysis] = useState<AnalysisRecord | null>(null);
-  const [nodes, setNodes] = useState<DebtNode[]>([]);
   const [items, setItems] = useState<RoadmapItem[]>([]);
-  const [trustScore, setTrustScore] = useState<TrustScoreResult | null>(null);
-  const [deploymentConfidence, setDeploymentConfidence] = useState<DeploymentConfidenceResult | null>(null);
-  const [consequenceForecast, setConsequenceForecast] = useState<ConsequencePredictionResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     async function load() {
@@ -42,13 +24,8 @@ export default function RoadmapPage() {
         const res = await fetch(`/api/analysis/${analysisId}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        setAnalysis(data.analysis);
         const loadedNodes = (data.nodes ?? []) as DebtNode[];
-        setNodes(loadedNodes);
         setItems(nodesToRoadmap(loadedNodes));
-        setTrustScore(data.trustScore ?? null);
-        setDeploymentConfidence(data.deploymentConfidence ?? null);
-        setConsequenceForecast(data.consequenceForecast ?? null);
       } catch {
         /* handled by empty state */
       } finally {
@@ -58,7 +35,16 @@ export default function RoadmapPage() {
     load();
   }, [analysisId]);
 
-  const businessTranslations = useMemo(() => nodes.slice(0, 5).map((node) => buildBusinessImpactFromNode(node)), [nodes]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [items.length]);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const pagedItems = items.slice(startIndex, endIndex);
+  const showingStart = items.length === 0 ? 0 : startIndex + 1;
+  const showingEnd = Math.min(endIndex, items.length);
 
   if (loading) {
     return (
@@ -70,106 +56,45 @@ export default function RoadmapPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 fade-in-up">
-      <div className="flex items-center gap-4 mb-8">
+      <div className="mb-5">
         <Link
           href={`/analyze/${analysisId}`}
-          className="flex items-center justify-center p-2.5 bg-[#efe8de]/70 hover:bg-[#e5d9c8] border border-[rgba(176,123,79,0.2)] rounded-xl text-[#b07b4f] shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[rgba(176,123,79,0.2)] bg-[#efe8de]/70 hover:bg-[#e5d9c8] text-[#8c6239] font-bold text-sm transition-all"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Analyze</span>
         </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <Radar className="w-5 h-5 text-accent-cyan" />
-            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-              {mode === 'business' ? 'Business Risk Roadmap' : 'Refactoring Roadmap'}
-            </h1>
-          </div>
-          {analysis && (
-            <p className="text-slate-500 text-sm mt-1.5 font-bold">
-              {analysis.repo_owner}/{analysis.repo_name} — {mode === 'business' ? 'prioritized by trust, impact, and deployment risk' : 'prioritized by debt and security risk'}
-            </p>
-          )}
-        </div>
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
-          <FingerprintCard
-            label={analysis?.fingerprint_label ?? null}
-            confidence={analysis?.fingerprint_confidence}
-          />
-          {analysis && (
-            <div className="glass-panel rounded-3xl p-5 mt-4 space-y-3.5 text-sm border border-[rgba(176,123,79,0.12)] shadow-md bg-white/40">
-              <Stat label="Total Nodes" value={analysis.total_nodes} />
-              <Stat label="Avg Debt Score" value={analysis.avg_debt_score} />
-              <Stat label="Files Scanned" value={analysis.total_files} />
-              <Stat label="Repo Security Score" value={analysis.repo_security_score} />
-              <Stat label="Critical Vulns" value={analysis.critical_vulnerabilities} />
-            </div>
-          )}
-        </div>
-        <div className="lg:col-span-3">
-          {mode === 'business' && (
-            <div className="mb-6">
-              <ExecutiveCommandCenter
-                analysis={analysis}
-                trust={trustScore}
-                deploymentConfidence={deploymentConfidence}
-                businessTranslations={businessTranslations}
-                consequenceForecast={consequenceForecast}
-              />
-            </div>
-          )}
-          {mode === 'business' && (
-            <div className="grid xl:grid-cols-[1.1fr_0.9fr] gap-6 mb-6">
-              <ExecutiveRiskCard analysis={analysis} />
-              <TrustScoreCard trust={trustScore} />
-            </div>
-          )}
-          {mode === 'business' && (
-            <div className="grid xl:grid-cols-2 gap-6 mb-6">
-              <DeploymentConfidenceCard confidence={deploymentConfidence} />
-              <ConsequenceForecast forecast={consequenceForecast} />
-            </div>
-          )}
-          {mode === 'business' && analysis && (
-            <BusinessImpactPanel
-              risks={businessTranslations}
-              operationalRisks={analysis.operationalRisks ?? []}
-              customerImpact={analysis.customerImpact ?? []}
-              ignoreConsequences={analysis.ignoreConsequences ?? []}
-            />
-          )}
-          {mode === 'business' && (
-            <div className="grid xl:grid-cols-2 gap-6 mt-6 mb-6">
-              <FinancialImpactCard analysis={analysis} nodes={nodes} />
-              <RiskTimeline analysis={analysis} />
-            </div>
-          )}
-          {mode === 'business' && (
-            <div className="grid xl:grid-cols-2 gap-6 mb-6">
-              <ComplianceScoreCard analysis={analysis} nodes={nodes} />
-              <ComplianceRiskCenter analysis={analysis} nodes={nodes} />
-            </div>
-          )}
-          {mode === 'business' && (
-            <div className="grid xl:grid-cols-2 gap-6 mb-6">
-              <BoardReportCard analysis={analysis} />
-              <div />
-            </div>
-          )}
-          <RoadmapTable items={items} analysisId={analysisId} />
+      <RoadmapTable items={pagedItems} analysisId={analysisId} />
+
+      <div className="mt-5 flex items-center justify-between gap-4">
+        <p className="text-sm text-slate-500 font-semibold">
+          Showing {showingStart}-{showingEnd} of {items.length}
+        </p>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3.5 py-2 rounded-lg border border-[rgba(176,123,79,0.2)] bg-white/70 text-sm font-bold text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f7f2ec]"
+          >
+            Prev
+          </button>
+          <span className="text-sm font-bold text-slate-600 min-w-[88px] text-center">
+            Page {currentPage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+            className="px-3.5 py-2 rounded-lg border border-[rgba(176,123,79,0.2)] bg-white/70 text-sm font-bold text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f7f2ec]"
+          >
+            Next
+          </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex justify-between items-center">
-      <span className="text-slate-500 font-bold">{label}</span>
-      <span className="text-slate-800 font-extrabold font-mono">{value}</span>
     </div>
   );
 }
