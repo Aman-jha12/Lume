@@ -22,6 +22,7 @@ interface SimNode extends d3.SimulationNodeDatum {
   security_weighted_score: number;
   has_critical_security: boolean;
   vulnerability_count: number;
+  exploitability_score: number;
   security_risk_level: DebtNode['security_risk_level'];
   symbol_name: string;
   file_path: string;
@@ -140,6 +141,7 @@ export function HeatMap({
       security_weighted_score: n.security_weighted_score ?? 0,
       has_critical_security: n.has_critical_security ?? false,
       vulnerability_count: n.vulnerability_count ?? 0,
+      exploitability_score: n.exploitability_score ?? 0,
       security_risk_level: n.security_risk_level ?? 'none',
       symbol_name: n.symbol_name,
       file_path: n.file_path,
@@ -526,6 +528,7 @@ function getLinkNode(endpoint: SimNode | string): SimNode {
       security_weighted_score: 0,
       has_critical_security: false,
       vulnerability_count: 0,
+      exploitability_score: 0,
       security_risk_level: 'none',
       symbol_name: '',
       file_path: '',

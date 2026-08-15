@@ -16,44 +16,50 @@ export function LoadingState({
 }: LoadingStateProps) {
   const normalizedMsg = (message || '').toLowerCase();
 
-  // Define the stages in our pipeline using clear progress thresholds so they display sequentially
   const stages = [
     {
       id: 'queue',
       label: 'Queueing & Setup',
       desc: 'Securing pipeline slot and initializing workspace...',
-      isCompleted: progress >= 10,
-      isActive: progress < 10 || normalizedMsg.includes('initializ') || normalizedMsg.includes('queue'),
+      keywords: ['initializ', 'queue', 'enqueue', 'starting job'],
+      start: 0,
+      end: 10,
     },
     {
       id: 'fetch',
       label: 'Repository Retrieval',
       desc: 'Downloading repository source files and folders...',
-      isCompleted: progress >= 30,
-      isActive: (progress >= 10 && progress < 30) || normalizedMsg.includes('fetch') || normalizedMsg.includes('clone') || normalizedMsg.includes('download'),
+      keywords: ['fetch', 'clone', 'download', 'repository', 'tree', 'filtering files'],
+      start: 10,
+      end: 30,
     },
     {
       id: 'ast',
       label: 'AST Parsing & Code Mining',
       desc: 'Parsing code structures and building symbol tables...',
-      isCompleted: progress >= 60,
-      isActive: (progress >= 30 && progress < 60) || normalizedMsg.includes('parse') || normalizedMsg.includes('ast'),
+      keywords: ['parse', 'ast', 'symbol', 'code mining'],
+      start: 30,
+      end: 45,
     },
     {
       id: 'scoring',
       label: 'Debt & Security Intelligence',
       desc: 'Calculating complexity, duplication, and vulnerability vectors...',
-      isCompleted: progress >= 90,
-      isActive: (progress >= 60 && progress < 90) || normalizedMsg.includes('score') || normalizedMsg.includes('security'),
+      keywords: ['score', 'security', 'duplication', 'collapse', 'exploit', 'blast radius', 'priority', 'scoring'],
+      start: 45,
+      end: 90,
     },
     {
       id: 'graph',
       label: 'Graph Generation',
       desc: 'Assembling visual heatmap coordinates and propagation links...',
-      isCompleted: progress >= 95 || normalizedMsg.includes('completed'),
-      isActive: progress >= 90 || normalizedMsg.includes('graph') || normalizedMsg.includes('saving nodes'),
+      keywords: ['graph', 'heatmap', 'saving nodes', 'completed', 'final'],
+      start: 90,
+      end: 100,
     },
   ];
+
+  const activeStageIndex = getActiveStageIndex(progress, normalizedMsg, stages);
 
   return (
     <div className="glass-panel rounded-[32px] p-8 border border-[rgba(176,123,79,0.16)] bg-gradient-to-br from-[#fffaf5] via-[#fffdfb] to-[#fcfaf7] shadow-[0_20px_50px_rgba(176,123,79,0.06)] space-y-8 max-w-xl mx-auto relative overflow-hidden">
@@ -77,16 +83,18 @@ export function LoadingState({
 
       {/* Live Checkpoint Pipeline */}
       <div className="space-y-4">
-        {stages.map((stage) => {
+        {stages.map((stage, index) => {
+          const isCompleted = index < activeStageIndex;
+          const isActive = index === activeStageIndex;
           let stateClass = 'opacity-40';
           let borderClass = 'border-[rgba(176,123,79,0.06)] bg-white/30';
           let titleClass = 'text-slate-500 font-bold';
 
-          if (stage.isCompleted) {
+          if (isCompleted) {
             stateClass = 'opacity-100';
             borderClass = 'border-emerald-200 bg-emerald-500/5';
             titleClass = 'text-slate-800 font-extrabold';
-          } else if (stage.isActive) {
+          } else if (isActive) {
             stateClass = 'opacity-100 scale-[1.02] shadow-sm border-[rgba(176,123,79,0.2)] bg-gradient-to-r from-white to-[#fffaf5]';
             titleClass = 'text-[#b07b4f] font-black';
           }
@@ -97,9 +105,9 @@ export function LoadingState({
               className={`flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300 ${borderClass} ${stateClass}`}
             >
               <div className="shrink-0 mt-0.5">
-                {stage.isCompleted ? (
+                {isCompleted ? (
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 animate-bounce" />
-                ) : stage.isActive ? (
+                ) : isActive ? (
                   <Loader2 className="w-5 h-5 text-[#b07b4f] animate-spin" />
                 ) : (
                   <Circle className="w-5 h-5 text-slate-300" />
@@ -120,4 +128,29 @@ export function LoadingState({
       </div>
     </div>
   );
+}
+
+function getActiveStageIndex(
+  progress: number,
+  normalizedMsg: string,
+  stages: Array<{
+    keywords: string[];
+    start: number;
+    end: number;
+  }>
+) {
+  if (progress >= 100 || /\bcompleted?\b/.test(normalizedMsg)) {
+    return stages.length - 1;
+  }
+
+  const keywordStageIndex = stages.findIndex((stage) =>
+    stage.keywords.some((keyword) => normalizedMsg.includes(keyword))
+  );
+
+  if (keywordStageIndex >= 0) {
+    return keywordStageIndex;
+  }
+
+  const rangeStageIndex = stages.findIndex((stage) => progress < stage.end);
+  return rangeStageIndex >= 0 ? rangeStageIndex : stages.length - 1;
 }
